@@ -49,9 +49,7 @@ display(Audio(data=noisy_data, rate=samplerate))
 
 print("\nФайл с шумом сохранен как 'noisy.wav'")
 
-Оригинальный звук:
-/usr/local/lib/python3.11/dist-packages/matplotlib/axes/_axes.py:8233: RuntimeWarning: divide by zero encountered in log10
-  Z = 10. * np.log10(spec)
+(создание помехи)
 
 #установка необходимых библиотек (включить при необходимости)
 #!pip install numpy scipy soundfile matplotlib
