@@ -1,174 +1,149 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+#установка необходимых библиотек (включить при необходимости)
+#!pip install numpy soundfile #Для обработки звука
+#!apt-get install -y ffmpeg #БПФ
 
-# C extensions
-*.so
+import numpy as np
+import soundfile as sf
+from IPython.display import Audio, display #подключение библиотек
+import matplotlib.pyplot as plt
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# Параметры шума
+NOISE_FREQ = 2000 # Частота шума в герцах
+NOISE_AMP = 0.045    # Громкость шума (0-1)
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+# 1. Загрузка аудиофайла
+data, samplerate = sf.read('input.wav')
+if len(data.shape) > 1:
+    data = data[:, 0]                   # Брать первый канал если стерео
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# 2. Генерация шума
+t = np.arange(len(data)) / samplerate                   # Временная шкала
+noise = NOISE_AMP * np.sin(2 * np.pi * NOISE_FREQ * t)  # Синусоидальный шум
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
+# 3. Добавление шума к оригинальному сигналу
+noisy_data = data + noise
 
-# Translations
-*.mo
-*.pot
+# 4. Сохранение результата
+sf.write('noisy.wav', noisy_data, samplerate)
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+# Спектрограмма 1 чистый сигнал
+plt.subplot(2, 1, 1)
+plt.specgram(data, Fs=samplerate, NFFT=1024)
+plt.title("\nСпектрограмма чистого сигнала\n")
+plt.xlabel("Время (сек)")
+plt.ylabel("Частота (Гц)")
 
-# Flask stuff:
-instance/
-.webassets-cache
+# Спектрограмма 2 с шумом
 
-# Scrapy stuff:
-.scrapy
+plt.specgram(noisy_data, Fs=samplerate, NFFT=1024)
+plt.title("\nСпектрограмма сигнала с шумом")
+plt.xlabel("Время (сек)\n")
+plt.ylabel("Частота (Гц)")
 
-# Sphinx documentation
-docs/_build/
+# 5. Воспроизведение аудио
+print("Оригинальный звук:")
+display(Audio(data=data, rate=samplerate))
 
-# PyBuilder
-.pybuilder/
-target/
+print("\nЗвук с добавленным шумом:")
+display(Audio(data=noisy_data, rate=samplerate))
 
-# Jupyter Notebook
-.ipynb_checkpoints
+print("\nФайл с шумом сохранен как 'noisy.wav'")
 
-# IPython
-profile_default/
-ipython_config.py
+Оригинальный звук:
+/usr/local/lib/python3.11/dist-packages/matplotlib/axes/_axes.py:8233: RuntimeWarning: divide by zero encountered in log10
+  Z = 10. * np.log10(spec)
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+#установка необходимых библиотек (включить при необходимости)
+#!pip install numpy scipy soundfile matplotlib
+#!apt-get install -y ffmpeg
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
+# библиотеки
+import numpy as np
+from scipy.fft import fft, ifft            #преобр фурье
+import soundfile as sf
+import matplotlib.pyplot as plt
+from IPython.display import Audio, display #для спектрограммы
 
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#uv.lock
+# Параметры фильтрации
+NOISE_FREQ = 2000 # Частота шума, который мы добавляли
+BANDWIDTH = 10    # Ширина полосы для фильтрации (±50 Гц)
 
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
+# 1. Загрузка зашумленного файла
+data, samplerate = sf.read('noisy.wav')
+print('Файл загружен')
 
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
-.pdm.toml
-.pdm-python
-.pdm-build/
+# 2. Преобразование Фурье
+fft_signal = fft(data)
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
+# 3. Расчет частотной сетки
+n = len(data)
+freqs = np.fft.fftfreq(n, 1/samplerate)
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
+# 4. Фильтрация шума
+# Создаем маску для частот шума
+noise_mask = (np.abs(freqs) > NOISE_FREQ - BANDWIDTH) & (np.abs(freqs) < NOISE_FREQ + BANDWIDTH)
 
-# SageMath parsed files
-*.sage.py
+# Обнуляем компоненты шума
+fft_signal_clean = fft_signal.copy()
+fft_signal_clean[noise_mask] = 0
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# 5. Обратное преобразование Фурье
+filtered_data = np.real(ifft(fft_signal_clean))
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# 6. Нормализация сигнала
+filtered_data = filtered_data / np.max(np.abs(filtered_data))
 
-# Rope project settings
-.ropeproject
+# 7. Сохранение результата
+sf.write('filtered.wav', filtered_data, samplerate)
 
-# mkdocs documentation
-/site
+# 8. Визуализация
+plt.figure(figsize=(20, 20))
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+#шрифты
+plt.rcParams.update({
+    'font.size': 14,           # Размер шрифта по умолчанию
+    'axes.titlesize': 14,      # Размер заголовков осей
+    'axes.labelsize': 14,      # Размер подписей осей
+    'xtick.labelsize': 14,     # Размер подписей тиков по X
+    'ytick.labelsize': 14,     # Размер подписей тиков по Y
+    'legend.fontsize': 14,     # Размер шрифта легенды
+})
 
-# Pyre type checker
-.pyre/
+# Спектр до фильтрации
+plt.subplot(3, 1, 1)
+plt.plot(freqs[:n//2], np.abs(fft_signal[:n//2]))
+plt.title("1")
+plt.xlabel("Частота (Гц)")
+plt.ylabel("Амплитуда")
+plt.axvspan(NOISE_FREQ - BANDWIDTH, NOISE_FREQ + BANDWIDTH, color='red', alpha=0.3)
 
-# pytype static type analyzer
-.pytype/
+# Спектр после фильтрации
+plt.subplot(3, 1, 2)
+plt.plot(freqs[:n//2], np.abs(fft_signal_clean[:n//2]))
+plt.title("2")
+plt.xlabel("Частота (Гц)")
+plt.ylabel("Амплитуда")
 
-# Cython debug symbols
-cython_debug/
+# Спектрограмма
+plt.subplot(3, 1, 3)
+plt.specgram(filtered_data, Fs=samplerate, NFFT=1024)
+plt.title("Спектрограмма очищенного сигнала")
+plt.xlabel("Время (сек)")
+plt.ylabel("Частота (Гц)")
 
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+plt.tight_layout()
+plt.show()
 
-# Ruff stuff:
-.ruff_cache/
+# 9. Воспроизведение результатов
+print("\n Результаты фильтрации:")
+print("Оригинал с шумом:")
+display(Audio(data=data, rate=samplerate))
 
-# PyPI configuration file
-.pypirc
+print("\очищенный сигнал:")
+display(Audio(data=filtered_data, rate=samplerate))
+
+print("\n Файлы сохранены:")
+print("- filtered.wav - очищенный аудиофайл")
+
+ Файлы сохранены:
+- filtered.wav - очищенный аудиофайл
